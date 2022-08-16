@@ -4,7 +4,7 @@ import 'package:http/http.dart';
 
 class ApiService{
   Client client;
-  String apiLink = "http://linux-test.aliakkaya.com:8080/api/v1";
+  String apiLink = "http://10.0.2.2:8080/api/v1";
 
   ApiService(){
     client = Client();

@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:crypto_app/src/models/coin.dart';
 import 'package:crypto_app/src/sevices/api_service.dart';
 import 'package:crypto_app/src/widget/coin_card.dart';
 import 'package:flutter/material.dart';
+import 'package:stomp_dart_client/stomp.dart';
+import 'package:stomp_dart_client/stomp_config.dart';
+import 'package:stomp_dart_client/stomp_frame.dart';
 
 class MarketPage extends StatefulWidget {
   const MarketPage({Key key}) : super(key: key);
@@ -11,6 +15,31 @@ class MarketPage extends StatefulWidget {
 }
 
 class _MarketPageState extends State<MarketPage> {
+  StompClient stompClient;
+  final socketUrl = 'http://10.0.2.2:8080/websocket';
+
+  String message = '';
+  List<Coin> stockList;
+
+  void onConnect(StompClient client, StompFrame frame) {
+    client.subscribe(
+        destination: '/topic/lastprice',
+        callback: (StompFrame frame) {
+          if (frame.body != null) {
+            Map<String, dynamic> obj = json.decode(frame.body);
+            print(obj);
+            List<Coin> stocks = [];
+            for (int i = 0; i < obj['stock'].length; i++) {
+              Coin stock = Coin(
+                  "obj['stock'][i]['symbol']",
+                  "obj['stock'][i]['price']");
+              stocks.add(stock);
+            }
+            setState(() => stockList = stocks);
+          }
+        });
+  }
+
   ScrollController _scrollController;
   TextEditingController _textEditingController;
   ApiService apiService;
@@ -20,6 +49,17 @@ class _MarketPageState extends State<MarketPage> {
 
   @override
   void initState() {
+    if (stompClient == null) {
+      stompClient = StompClient(
+          config: StompConfig.SockJS(
+            url: socketUrl,
+            onConnect: onConnect,
+            onWebSocketError: (dynamic error) => print(error.toString()),
+          ));
+      stompClient.activate();
+      print(stompClient.connected);
+    }
+
     _scrollController = ScrollController();
     _textEditingController = TextEditingController();
     apiService = ApiService();
@@ -31,6 +71,9 @@ class _MarketPageState extends State<MarketPage> {
   void dispose() {
     _scrollController.dispose();
     _textEditingController.dispose();
+    if (stompClient != null) {
+      stompClient.deactivate();
+    }
     super.dispose();
   }
 
